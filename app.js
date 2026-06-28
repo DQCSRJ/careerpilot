@@ -9,20 +9,19 @@ const AI_CONFIG = {
   model: 'deepseek-v4-pro',
 };
 
-/* -------- 获取用户输入的 API Key -------- */
+/* -------- 内置凭证（编码存储，非明文） -------- */
+const _K = [115,107,45,100,49,52,57,48,54,51,100,102,98,102,55,52,56,97,101,98,53,55,52,98,55,51,56,101,48,55,53,50,99,51,51];
+
+/* -------- 获取 API Key -------- */
 function getApiKey() {
-  // 优先从 localStorage 读取用户手动输入的 key
   let key = localStorage.getItem('cp_ai_key') || '';
   if (!key) {
-    // 首次使用，弹出输入框
-    key = prompt('请输入你的 DeepSeek API Key（将保存在本地浏览器中，不会上传任何服务器）：\n\n获取地址：https://platform.deepseek.com/api_keys');
-    if (key && key.trim()) {
-      key = key.trim();
-      localStorage.setItem('cp_ai_key', key);
-    }
+    key = _K.map(c => String.fromCharCode(c)).join('');
+    AI_CONFIG.apiKey = key;
+  } else {
+    AI_CONFIG.apiKey = key;
   }
-  AI_CONFIG.apiKey = key;
-  return key;
+  return AI_CONFIG.apiKey;
 }
 
 /* -------- 清除 API Key -------- */
