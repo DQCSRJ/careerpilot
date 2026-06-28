@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>职路引擎 CareerPilot · Demo</title>
+  <link rel="stylesheet" href="styles.css?v=20260628v3">
+</head>
+<body>
+
+  <!-- ============ 启动页 ============ -->
+  <section id="view-splash" class="view view-splash active">
+    <div class="splash-inner">
+      <div class="splash-logo">
+        <span class="splash-mark">CP</span>
+      </div>
+      <h1 class="splash-title">职路引擎 <span>CareerPilot</span></h1>
+      <p class="splash-sub">把模糊目标，变成可执行、可展示、可表达的成长闭环。</p>
+      <button class="btn btn-primary btn-lg" id="btn-start">开始你的职业成长之旅</button>
+      <div class="splash-tags">
+        <span>目标分析</span><span>任务执行</span><span>成果沉淀</span><span>简历与面试表达</span>
+      </div>
+      <p class="splash-tip">评委提示：点击按钮后，表单已预填示例数据，直接点击"生成"即可体验完整流程（约 7 秒）</p>
+    </div>
+  </section>
+
+  <!-- ============ 输入页 ============ -->
+  <section id="view-input" class="view">
+    <div class="form-wrap">
+      <div class="form-head">
+        <span class="step-badge">3 步定位你的成长路径</span>
+        <h2>告诉我你的职业目标</h2>
+        <p>填写你的目标场景、岗位和级别，AI 会为你生成个性化路径。</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>第 1 步 · 目标场景 <span class="hint">你想用这个路径做什么</span></label>
+          <input type="text" id="in-scene" class="form-input" list="scene-list" value="求职准备" placeholder="例如：求职准备 / 转岗转型 / 作品集打造 / 面试冲刺">
+          <datalist id="scene-list">
+            <option value="求职准备">
+            <option value="转岗转型">
+            <option value="作品集打造">
+            <option value="面试冲刺">
+            <option value="技能提升">
+            <option value="副业探索">
+          </datalist>
+        </div>
+
+        <div class="field field-full">
+          <label>第 2 步 · 目标岗位 <span class="hint">填写你想从事的岗位，支持任意行业</span></label>
+          <input type="text" id="in-role" class="form-input" list="role-list" value="AI产品经理" placeholder="例如：AI产品经理 / UI设计师 / 数据分析师 / 新媒体运营 / 产品经理">
+          <datalist id="role-list">
+            <option value="AI产品经理">
+            <option value="AI应用开发工程师">
+            <option value="商业分析师">
+            <option value="增长策略师">
+            <option value="AI解决方案顾问">
+            <option value="UI/UX设计师">
+            <option value="前端开发工程师">
+            <option value="数据分析师">
+            <option value="新媒体运营">
+            <option value="产品经理">
+            <option value="人力资源专员">
+            <option value="财务分析师">
+            <option value="供应链管理">
+            <option value="教师/讲师">
+            <option value="律师助理">
+          </datalist>
+        </div>
+
+        <div class="field field-full">
+          <label>第 3 步 · 目标级别 <span class="hint">你的目标职级</span></label>
+          <input type="text" id="in-level" class="form-input" list="level-list" value="校招" placeholder="例如：实习 / 校招 / 1-3年社招 / 转岗 / 资深">
+          <datalist id="level-list">
+            <option value="实习">
+            <option value="校招">
+            <option value="1-3年社招">
+            <option value="3-5年社招">
+            <option value="转岗">
+            <option value="资深/专家">
+          </datalist>
+        </div>
+
+        <div class="field field-full">
+          <label>已有技能基础 <span class="hint">用逗号分隔，例如：Python基础, 会用Figma, 做过课程项目</span></label>
+          <textarea id="in-skills" rows="2" placeholder="例如：Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL">Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL</textarea>
+        </div>
+
+        <div class="field field-full">
+          <label>已有项目/实习经历 <span class="hint">选填，帮助 CareerPilot 更准确评估</span></label>
+          <textarea id="in-exp" rows="3" placeholder="描述你的项目、实习或比赛经历">在校期间做过一个课程管理系统的需求分析和原型设计，参加过学校的创新创业比赛，获得校级二等奖。</textarea>
+        </div>
+
+        <div class="field field-full">
+          <label>目标岗位 JD（选填） <span class="hint">粘贴真实招聘JD，AI 会自动解析岗位要求</span></label>
+          <textarea id="in-jd" rows="3" placeholder="粘贴目标岗位的招聘JD原文，AI 会自动提取硬性要求并生成匹配报告..."></textarea>
+        </div>
+
+        <div class="field">
+          <label>每日可投入时间</label>
+          <div class="slider-row">
+            <input type="range" id="in-time" min="0.5" max="4" step="0.5" value="1.5">
+            <span class="slider-val" id="time-val">1.5 小时 / 天</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>冲刺周期</label>
+          <div class="chip-group" id="chip-sprint">
+            <span class="chip" data-val="7">7 天速通</span>
+            <span class="chip active" data-val="30">30 天冲刺</span>
+            <span class="chip" data-val="60">60 天深耕</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="btn-back-splash">返回</button>
+        <button class="btn btn-primary btn-lg" id="btn-generate">
+          <span class="btn-icon">⚡</span> 生成我的成长路径
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AI 生成中 ============ -->
+  <section id="view-loading" class="view">
+    <div class="loading-wrap">
+      <div class="loading-orb">
+        <div class="orb-ring r1"></div>
+        <div class="orb-ring r2"></div>
+        <div class="orb-ring r3"></div>
+        <div class="orb-core">CP</div>
+      </div>
+      <h2 id="loading-title">正在分析你的职业目标…</h2>
+      <div class="loading-steps" id="loading-steps"></div>
+    </div>
+  </section>
+
+  <!-- ============ 主应用外壳 ============ -->
+  <section id="view-app" class="view view-app">
+    <!-- 顶栏 -->
+    <header class="appbar">
+      <div class="appbar-left">
+        <span class="appbar-mark">CP</span>
+        <span class="appbar-brand">职路引擎 CareerPilot</span>
+      </div>
+      <nav class="appbar-nav">
+        <a class="nav-item active" data-route="dashboard">仪表盘</a>
+        <a class="nav-item" data-route="sprint">冲刺计划</a>
+        <a class="nav-item" data-route="task">今日任务</a>
+        <a class="nav-item" data-route="portfolio">作品集</a>
+        <a class="nav-item" data-route="express">求职表达</a>
+        <a class="nav-item" data-route="about">关于作品</a>
+      </nav>
+      <div class="appbar-right">
+        <span class="appbar-day" id="appbar-day">第 1 天</span>
+        <button class="appbar-menu-btn" id="appbar-menu-btn">☰</button>
+      </div>
+    </header>
+    <!-- 移动端导航抽屉 -->
+    <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+    <nav class="mobile-nav" id="mobile-nav">
+      <div class="mn-header">
+        <span class="mn-title">CareerPilot 导航</span>
+        <button class="mn-close" id="mn-close">✕</button>
+      </div>
+      <a class="mn-item active" data-route="dashboard">📊 仪表盘</a>
+      <a class="mn-item" data-route="sprint">📅 冲刺计划</a>
+      <a class="mn-item" data-route="task">📋 今日任务</a>
+      <a class="mn-item" data-route="portfolio">📦 作品集</a>
+      <a class="mn-item" data-route="express">🎤 求职表达</a>
+      <a class="mn-item" data-route="about">ℹ️ 关于作品</a>
+    </nav>
+
+    <div class="app-body">
+      <!-- 侧栏：职业画像 -->
+      <aside class="sidebar">
+        <div class="profile-card" id="profile-card">
+          <!-- 由 JS 填充 -->
+        </div>
+        <div class="quick-stats" id="quick-stats">
+          <!-- 由 JS 填充 -->
+        </div>
+      </aside>
+
+      <!-- 主内容区 -->
+      <main class="main-content" id="main-content">
+        <!-- ===== 仪表盘 ===== -->
+        <div class="route route-dashboard active" data-route-panel="dashboard">
+          <div class="route-head">
+            <h2>成长仪表盘</h2>
+            <p>你的职业成长全景，从这里开始每一天的行动。</p>
+          </div>
+
+          <!-- 成长闭环进度条 -->
+          <div class="loop-chain" id="loop-chain"></div>
+
+          <!-- 个性化生成依据 -->
+          <div class="personalization-card" id="personalization-card"></div>
+
+          <div class="dash-grid">
+            <!-- 能力雷达 -->
+            <div class="panel panel-radar">
+              <h3>能力雷达图</h3>
+              <div class="radar-wrap" id="radar-wrap">
+                <svg id="radar-svg" viewBox="0 0 300 300"></svg>
+              </div>
+              <div class="radar-legend">
+                <span><i class="dot dot-current"></i>当前能力</span>
+                <span><i class="dot dot-target"></i>目标岗位要求</span>
+              </div>
+            </div>
+
+            <!-- 能力差距 -->
+            <div class="panel panel-gap">
+              <h3>能力差距分析</h3>
+              <div class="gap-list" id="gap-list"></div>
+            </div>
+
+            <!-- 今日任务预览 -->
+            <div class="panel panel-today">
+              <div class="panel-head-row">
+                <h3>今日任务</h3>
+                <span class="day-tag" id="today-tag">第 1 天</span>
+              </div>
+              <div class="today-tasks" id="today-tasks"></div>
+              <button class="btn btn-soft btn-sm" id="btn-goto-task">查看全部任务</button>
+            </div>
+
+            <!-- 冲刺进度 -->
+            <div class="panel panel-progress">
+              <h3>冲刺进度</h3>
+              <div class="progress-ring-wrap">
+                <svg class="progress-ring" viewBox="0 0 120 120">
+                  <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+                  <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52"></circle>
+                </svg>
+                <div class="progress-ring-text">
+                  <span class="pr-num" id="pr-num">0%</span>
+                  <span class="pr-label">总进度</span>
+                </div>
+              </div>
+              <div class="progress-stats" id="progress-stats"></div>
+            </div>
+
+            <!-- 作品集预览 -->
+            <div class="panel panel-portfolio-mini">
+              <h3>已沉淀成果</h3>
+              <div class="portfolio-mini" id="portfolio-mini"></div>
+              <button class="btn btn-soft btn-sm" id="btn-goto-portfolio">查看作品集</button>
+            </div>
+          </div>
+
+          <!-- 文件上传 + 流程检查 -->
+          <div class="upload-check-section">
+            <div class="panel upload-panel">
+              <h3>📎 上传你的材料</h3>
+              <p class="panel-sub">上传简历、作品文档或项目截图，CareerPilot 会帮你检查流程完整度。</p>
+              <div class="upload-zone" id="upload-zone">
+                <div class="uz-icon">📎</div>
+                <div class="uz-text">点击或拖拽文件到此处</div>
+                <div class="uz-hint">支持 .doc / .docx / .pdf / .txt / .md / .png / .jpg</div>
+                <input type="file" id="file-input" multiple accept=".doc,.docx,.pdf,.txt,.md,.png,.jpg,.jpeg" hidden>
+              </div>
+              <div class="upload-list" id="upload-list"></div>
+            </div>
+
+            <div class="panel check-panel">
+              <h3>🔍 流程检查报告</h3>
+              <p class="panel-sub">基于你的完成情况和上传材料，自动检查成长流程。</p>
+              <div class="check-report" id="check-report"></div>
+              <button class="btn btn-primary btn-sm" id="btn-run-check">运行流程检查</button>
+            </div>
+          </div>
+
+          <!-- 岗位差距对照 -->
+          <div class="panel jd-panel" style="margin-top:20px;">
+            <h3>🎯 岗位要求对照（基于真实JD）</h3>
+            <p class="panel-sub">以下要求来自真实招聘JD拆解，绿色表示你的成果已覆盖，橙色表示有对应任务但未完成，红色表示计划中缺失需自行补齐。</p>
+            <div class="jd-summary" id="jd-summary"></div>
+            <div class="jd-req-list" id="jd-req-list"></div>
+          </div>
+        </div>
+
+        <!-- ===== 冲刺计划 ===== -->
+        <div class="route route-sprint" data-route-panel="sprint">
+          <div class="route-head">
+            <h2 id="sprint-title">30 天冲刺计划</h2>
+            <p>分四个阶段，从认知到实战，最后落地为求职表达。</p>
+          </div>
+          <div class="phases" id="phases"></div>
+        </div>
+
+        <!-- ===== 今日任务 ===== -->
+        <div class="route route-task" data-route-panel="task">
+          <div class="route-head">
+            <h2>今日任务清单</h2>
+            <p>完成每项任务，成果会自动沉淀到作品集。</p>
+          </div>
+          <div class="day-selector" id="day-selector"></div>
+          <div class="task-list" id="task-list"></div>
+        </div>
+
+        <!-- ===== 作品集 ===== -->
+        <div class="route route-portfolio" data-route-panel="portfolio">
+          <div class="route-head">
+            <h2>我的作品集</h2>
+            <p>所有完成的任务成果，自动结构化沉淀在这里。</p>
+          </div>
+          <div class="portfolio-grid" id="portfolio-grid"></div>
+        </div>
+
+        <!-- ===== 求职表达 ===== -->
+        <div class="route route-express" data-route-panel="express">
+          <div class="route-head">
+            <h2>求职表达转化</h2>
+            <p>把你的成长成果，一键转化为简历、面试和周报表达。</p>
+          </div>
+          <div class="express-tabs">
+            <button class="etab active" data-etab="resume">简历项目描述</button>
+            <button class="etab" data-etab="interview">面试问答</button>
+            <button class="etab" data-etab="weekly">阶段周报</button>
+          </div>
+          <div class="express-body">
+            <div class="epanel active" data-epanel="resume" id="epanel-resume"></div>
+            <div class="epanel" data-epanel="interview" id="epanel-interview"></div>
+            <div class="epanel" data-epanel="weekly" id="epanel-weekly"></div>
+          </div>
+        </div>
+
+        <!-- ===== 关于作品 ===== -->
+        <div class="route route-about" data-route-panel="about">
+          <div class="route-head">
+            <h2>关于作品</h2>
+            <p>开发过程、TRAE 使用说明与版权声明。</p>
+          </div>
+
+          <!-- 开发过程 / TRAE 使用说明 -->
+          <div class="about-section">
+            <h3 class="about-title">开发过程与 TRAE 使用说明</h3>
+            <div class="about-grid">
+              <div class="about-card">
+                <div class="about-card-icon">1</div>
+                <h4>需求梳理</h4>
+                <p>在 TRAE Work 的 Work 模式中，用自然语言描述创意：面向大学生和转岗人群，做"目标分析到求职表达"的职业成长闭环。AI 协助梳理了用户痛点、核心模块和演示流程。</p>
+              </div>
+              <div class="about-card">
+                <div class="about-card-icon">2</div>
+                <h4>架构设计</h4>
+                <p>切换到 Code 模式后，用对话描述页面结构。TRAE 生成 HTML 骨架（启动页、输入页、加载页、主应用五大模块）、CSS 设计令牌系统和 JavaScript 状态管理框架。</p>
+              </div>
+              <div class="about-card">
+                <div class="about-card-icon">3</div>
+                <h4>数据建模</h4>
+                <p>用 TRAE 构建了 5 个岗位家族的能力模型（6 维度 × 当前/目标分值）、30 天分阶段任务模板库和成果产出结构，每个岗位对齐可展示成果，所有数据内置在 app.js 中，无外部 API 依赖。</p>
+              </div>
+              <div class="about-card">
+                <div class="about-card-icon">4</div>
+                <h4>交互实现</h4>
+                <p>通过 TRAE 逐轮迭代：雷达图 SVG 绘制、能力差距可视化、任务勾选与作品集自动沉淀、求职表达一键生成、进度环动画。每轮修改后实时预览验证。</p>
+              </div>
+              <div class="about-card">
+                <div class="about-card-icon">5</div>
+                <h4>视觉打磨</h4>
+                <p>使用 TRAE 调整配色系统、卡片层级、响应式断点和微交互动画。加载页的三环旋转动画和启动页的浮动效果均通过纯 CSS 实现，无外部依赖。</p>
+              </div>
+              <div class="about-card">
+                <div class="about-card-icon">6</div>
+                <h4>测试验证</h4>
+                <p>借助 TRAE 的浏览器预览能力，完整走通"输入目标 → AI 生成 → 仪表盘 → 任务完成 → 作品集沉淀 → 求职表达"全流程，确认无报错后定稿。</p>
+              </div>
+            </div>
+
+            <div class="trae-callout">
+              <h4>TRAE 在本项目中的角色</h4>
+              <p>整个 Demo 的需求拆解、代码编写、样式调整和测试验证均在 TRAE Work（Code 模式）中完成。TRAE 承担了从创意到可运行产品的全链路开发伙伴角色，开发者只需描述意图和审查产出，大幅降低了从想法到 Demo 的落地成本。</p>
+            </div>
+          </div>
+
+          <!-- 版权说明 -->
+          <div class="about-section">
+            <h3 class="about-title">版权说明</h3>
+            <div class="copyright-card">
+              <div class="cr-row">
+                <span class="cr-label">作品性质</span>
+                <span class="cr-value">本 Demo 为参加 TRAE AI 创造力大赛制作的原创演示作品。</span>
+              </div>
+              <div class="cr-row">
+                <span class="cr-label">代码版权</span>
+                <span class="cr-value">全部 HTML、CSS、JavaScript 代码均为原创编写，未使用任何第三方 UI 框架或组件库。</span>
+              </div>
+              <div class="cr-row">
+                <span class="cr-label">数据来源</span>
+                <span class="cr-value">岗位能力模型、任务模板和演示数据均为原创设计，基于公开职业信息整理，非复制自任何现有产品。</span>
+              </div>
+              <div class="cr-row">
+                <span class="cr-label">视觉素材</span>
+                <span class="cr-value">页面所有图标使用 Unicode 文本符号，图表使用纯 SVG 手绘，配色和布局为原创设计，无外部图片或字体依赖。</span>
+              </div>
+              <div class="cr-row">
+                <span class="cr-label">字体说明</span>
+                <span class="cr-value">使用系统内置字体（PingFang SC、Microsoft YaHei、Noto Sans CJK SC），无需加载外部字体文件。</span>
+              </div>
+              <div class="cr-row">
+                <span class="cr-label">开发工具</span>
+                <span class="cr-value">使用 TRAE Work（Code 模式）作为唯一开发环境，AI 辅助生成代码后由开发者审查和调整。</span>
+              </div>
+              <div class="cr-row">
+                <span class="cr-label">使用授权</span>
+                <span class="cr-value">本 Demo 仅用于比赛演示和学习交流目的，不用于商业用途。</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 技术栈 -->
+          <div class="about-section">
+            <h3 class="about-title">技术栈</h3>
+            <div class="tech-tags">
+              <span class="tech-tag">HTML5</span>
+              <span class="tech-tag">CSS3（Grid + Flexbox + 动画）</span>
+              <span class="tech-tag">原生 JavaScript（ES6+）</span>
+              <span class="tech-tag">SVG 矢量图表</span>
+              <span class="tech-tag">响应式设计</span>
+              <span class="tech-tag">零外部依赖</span>
+              <span class="tech-tag">TRAE Work Code 模式</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ============ 任务详情弹层 ============ -->
+  <div class="modal-overlay" id="task-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modal-title">任务详情</h3>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="modal-skip">稍后再做</button>
+        <button class="btn btn-primary" id="modal-complete">标记完成并沉淀成果</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Toast ============ -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js?v=20260628v3"></script>
+</body>
+</html>
