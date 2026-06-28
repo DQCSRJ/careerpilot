@@ -32,13 +32,12 @@ function clearApiKey() {
 }
 
 /* -------- AI 调用核心 -------- */
-async function callAI(prompt, systemPrompt) {
-  // 确保 API Key 已就绪
+async function callAI(prompt, systemPrompt, timeoutSec) {
   if (!AI_CONFIG.apiKey) {
     getApiKey();
   }
   if (!AI_CONFIG.apiKey) {
-    return null; // 用户取消输入
+    return null;
   }
 
   const messages = [];
@@ -46,6 +45,9 @@ async function callAI(prompt, systemPrompt) {
     messages.push({ role: 'system', content: systemPrompt });
   }
   messages.push({ role: 'user', content: prompt });
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), (timeoutSec || 30) * 1000);
 
   try {
     const res = await fetch(AI_CONFIG.apiUrl, {
@@ -60,19 +62,22 @@ async function callAI(prompt, systemPrompt) {
         temperature: 0.7,
         max_tokens: 2000,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+
     if (!res.ok) {
       if (res.status === 401) {
-        toast('API Key 无效，请重新输入', '');
-        localStorage.removeItem('cp_ai_key');
-        AI_CONFIG.apiKey = '';
+        toast('API Key 无效，请检查', '');
       }
-      throw new Error(`AI API error: ${res.status}`);
+      console.error('AI API error:', res.status);
+      return null;
     }
     const data = await res.json();
     return data.choices[0].message.content;
   } catch (err) {
-    console.error('AI call failed:', err);
+    clearTimeout(timeoutId);
+    console.error('AI call failed:', err.name === 'AbortError' ? 'timeout' : err);
     return null;
   }
 }
@@ -96,6 +101,7 @@ function saveState() {
       loopStatus: State.loopStatus || null,
       aiAnalysis: State.aiAnalysis || null,
       aiRoleModel: State.aiRoleModel || null,
+      aiTasks: State.aiTasks || null,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
@@ -121,6 +127,7 @@ function loadState() {
     State.loopStatus = data.loopStatus || null;
     State.aiAnalysis = data.aiAnalysis || null;
     State.aiRoleModel = data.aiRoleModel || null;
+    State.aiTasks = data.aiTasks || null;
     return !!(State.profile && State.sprint);
   } catch (e) {
     console.error('Load state failed:', e);
@@ -228,6 +235,8 @@ const State = {
   uploadedFiles: [],
   loopStatus: null,
   aiAnalysis: null,
+  aiRoleModel: null,
+  aiTasks: null,
 };
 
 /* -------- 岗位JD要求数据库 --------
@@ -3034,10 +3043,10 @@ async function startGeneration() {
   markStep();
   await sleep(500);
 
-  // Step 2: AI 真实分析个人画像
+  // Step 2: AI 一次性生成分析+能力模型+任务计划
   markStep();
-  const jdText = State.userInput.jd ? `\n目标岗位JD:\n${State.userInput.jd.substring(0, 500)}` : '';
-  const aiPrompt = `你是职业规划专家。用户信息如下：
+  const jdText = State.userInput.jd ? `\n目标岗位JD:\n${State.userInput.jd.substring(0, 800)}` : '';
+  const masterPrompt = `你是职业规划专家。用户信息：
 目标场景: ${State.userInput.scene}
 目标岗位: ${State.userInput.role}
 目标级别: ${State.userInput.level}
@@ -3046,35 +3055,103 @@ async function startGeneration() {
 每日可投入: ${State.userInput.timePerDay}小时
 冲刺周期: ${State.userInput.sprintDays}天${jdText}
 
-请分析这个用户的情况，用2-3句话给出：
-1. 用户当前的核心优势和短板
-2. 最需要优先补齐的能力
-3. 建议的冲刺策略
-${State.userInput.jd ? '4. 结合JD要求，指出用户与岗位的匹配度和关键差距' : ''}
+请严格用以下JSON格式返回（不要加任何markdown标记或代码块）：
+{
+  "analysis": "2-3句话分析用户核心优势、短板、建议冲刺策略",
+  "skills": [
+    {"name": "能力维度1", "current": 30, "target": 80},
+    {"name": "能力维度2", "current": 40, "target": 75},
+    {"name": "能力维度3", "current": 20, "target": 70},
+    {"name": "能力维度4", "current": 35, "target": 78},
+    {"name": "能力维度5", "current": 25, "target": 72},
+    {"name": "能力维度6", "current": 30, "target": 76}
+  ],
+  "phases": [
+    {"name": "阶段1名称", "desc": "阶段描述"},
+    {"name": "阶段2名称", "desc": "阶段描述"},
+    {"name": "阶段3名称", "desc": "阶段描述"},
+    {"name": "阶段4名称", "desc": "阶段描述"}
+  ],
+  "tasks": [
+    {"title": "任务标题", "desc": "任务描述", "phase": "阶段名称", "output": "产出物名称", "outputType": "产出类型", "steps": ["步骤1","步骤2","步骤3"], "tools": ["工具1","工具2"], "checklist": ["检查点1","检查点2"]}
+  ],
+  "keywords": "关键词1·关键词2·关键词3·关键词4·关键词5"
+}
 
-用简洁的中文回答，不要用markdown格式。`;
+要求：
+1. skills 必须6个维度，名称2-4字
+2. tasks 生成${State.userInput.sprintDays}个任务，每个任务都要贴合"${State.userInput.role}"岗位的实际工作内容
+3. tasks 的 output 和 outputType 要具体可展示
+4. phases 分4个阶段，对应冲刺周期
+5. 所有内容用中文`;
 
-  const aiResult = await callAI(aiPrompt, '你是CareerPilot职路引擎的AI分析核心，专注于职业成长路径规划。回答简洁有力。');
-  State.aiAnalysis = aiResult;
-  markStep();
-  await sleep(300);
+  const masterResult = await callAI(masterPrompt, '你是CareerPilot职路引擎的AI核心，专注于职业成长路径规划。必须返回合法JSON。', 60);
 
-  // Step 3: AI 生成能力模型（如果岗位不在预设中）
-  markStep();
-  if (!RoleModels[State.userInput.role]) {
-    State.aiRoleModel = await generateRoleModel(State.userInput.role, State.userInput.level);
+  if (masterResult) {
+    try {
+      let clean = masterResult.trim();
+      if (clean.startsWith('```')) {
+        clean = clean.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      }
+      const data = JSON.parse(clean);
+
+      State.aiAnalysis = data.analysis || null;
+      State.aiRoleModel = {
+        skills: data.skills.map(s => ({
+          name: s.name,
+          current: s.current || 30,
+          target: s.target || 75
+        })),
+        phases: data.phases,
+        scenes: '求职 / 转岗 / 作品集 / 面试冲刺',
+        levels: '实习 / 校招 / 1-3年 / 转岗',
+        outputs: (data.tasks || []).map(t => t.output).slice(0, 5).join('·'),
+        keywords: data.keywords || '',
+      };
+      State.aiTasks = (data.tasks || []).map((t, i) => ({
+        day: i + 1,
+        phase: t.phase || data.phases[Math.min(Math.floor(i / (State.userInput.sprintDays / 4)), 3)].name,
+        title: t.title,
+        desc: t.desc,
+        time: State.userInput.timePerDay,
+        output: {
+          type: t.outputType || '文档输出',
+          title: t.output || t.title,
+          desc: t.desc,
+          icon: ['📋','🔧','📊','📝','🎯','💡','🔍','✨'][i % 8],
+          banner: 'b' + ((i % 5) + 1),
+        },
+        steps: t.steps || ['了解核心要点', '动手实践', '整理成果'],
+        tools: t.tools || ['在线工具', '模板文档'],
+        checklist: t.checklist || ['已完成产出', '成果可展示'],
+      }));
+    } catch (e) {
+      console.error('AI master parse failed:', e);
+      State.aiAnalysis = null;
+      State.aiRoleModel = null;
+      State.aiTasks = null;
+    }
   } else {
+    State.aiAnalysis = null;
     State.aiRoleModel = null;
+    State.aiTasks = null;
   }
 
-  // Step 4: 构建画像
+  markStep();
+  await sleep(200);
+
+  // Step 3: 计算差距
   markStep();
   buildProfile();
-  await sleep(300);
+  await sleep(200);
+
+  // Step 4: 生成计划
+  markStep();
+  await sleep(200);
 
   // Step 5: 拆解任务
   markStep();
-  await sleep(300);
+  await sleep(200);
 
   // Step 6: 初始化
   markStep();
@@ -3092,7 +3169,11 @@ ${State.userInput.jd ? '4. 结合JD要求，指出用户与岗位的匹配度和
   setTimeout(() => {
     showView('view-app');
     renderAll();
-    toast('AI 成长路径已生成，开始你的冲刺！', 'success');
+    if (State.aiTasks) {
+      toast('AI 已生成' + State.userInput.role + '专属冲刺计划！', 'success');
+    } else {
+      toast('AI 超时，已使用基础模板生成计划', '');
+    }
   }, 400);
 }
 
@@ -3280,12 +3361,13 @@ function buildProfile() {
 
   const topGaps = gapAnalysis.slice(0, 3).map(g => g.name);
 
-  // === 3. 任务个性化排序 ===
+  // === 3. 任务：优先用 AI 生成的，否则用预设或通用模板 ===
   let allTasks;
-  if (TaskTemplates[role]) {
+  if (State.aiTasks && State.aiTasks.length > 0) {
+    allTasks = State.aiTasks.slice();
+  } else if (TaskTemplates[role]) {
     allTasks = TaskTemplates[role].slice();
   } else {
-    // 自定义岗位：基于 AI 阶段生成通用任务模板
     allTasks = generateGenericTasks(model, role, level);
   }
   const tasks = personalizeTaskOrder(allTasks, sprintDays, topGaps, levelCfg);
