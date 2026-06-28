@@ -3298,12 +3298,31 @@ const LevelAdjust = {
 function buildProfile() {
   const { scene, role, level, skills, experience, timePerDay, sprintDays } = State.userInput;
   
-  // 优先使用预设模型，否则使用 AI 生成的模型
-  let model = RoleModels[role];
-  if (!model && State.aiRoleModel) {
-    model = State.aiRoleModel;
+  // 优先使用 AI 生成的模型，彻底跳过预设模板
+  let model = State.aiRoleModel;
+  if (!model && RoleModels[role]) {
+    model = RoleModels[role];
   } else if (!model) {
-    model = RoleModels['AI产品经理']; // 最终 fallback
+    model = {
+      skills: [
+        { name: '核心能力', current: 30, target: 75 },
+        { name: '岗位认知', current: 20, target: 70 },
+        { name: '实操技能', current: 25, target: 78 },
+        { name: '沟通表达', current: 35, target: 72 },
+        { name: '问题解决', current: 30, target: 76 },
+        { name: '职业素养', current: 40, target: 80 },
+      ],
+      phases: [
+        { name: '认知筑基', desc: `建立${role}岗位核心认知` },
+        { name: '技能实操', desc: '动手实践核心技能' },
+        { name: '项目实战', desc: '完成完整项目交付' },
+        { name: '求职表达', desc: '转化为求职素材' },
+      ],
+      scenes: '求职 / 转岗 / 作品集 / 面试冲刺',
+      levels: '实习 / 校招 / 1-3年 / 转岗',
+      outputs: '工作文档 · 实操报告 · 项目成果',
+      keywords: `${role} · 岗位认知 · 实操能力 · 沟通表达 · 职业素养`,
+    };
   }
   
   const levelCfg = LevelAdjust[level] || { targetMul: 1.0, focus: '建立完整能力框架，具备实战项目经验' };
@@ -3373,13 +3392,12 @@ function buildProfile() {
 
   const topGaps = gapAnalysis.slice(0, 3).map(g => g.name);
 
-  // === 3. 任务：优先用 AI 生成的，否则用预设或通用模板 ===
+  // === 3. 任务：优先用 AI 生成的，不再用预设模板 ===
   let allTasks;
   if (State.aiTasks && State.aiTasks.length > 0) {
     allTasks = State.aiTasks.slice();
-  } else if (TaskTemplates[role]) {
-    allTasks = TaskTemplates[role].slice();
   } else {
+    // AI 失败时用通用模板（不含任何固定岗位话术）
     allTasks = generateGenericTasks(model, role, level);
   }
   const tasks = personalizeTaskOrder(allTasks, sprintDays, topGaps, levelCfg);
@@ -3421,22 +3439,22 @@ function buildProfile() {
 /* -------- 为自定义岗位生成通用任务模板 -------- */
 function generateGenericTasks(model, role, level) {
   const phases = model.phases || [
-    { name: '认知筑基', desc: '建立岗位核心认知' },
+    { name: '认知筑基', desc: `建立${role}核心认知` },
     { name: '技能实操', desc: '动手实践核心技能' },
     { name: '项目实战', desc: '完成完整项目交付' },
     { name: '求职表达', desc: '转化为求职素材' },
   ];
 
-  const outputs = (model.outputs || '文档·原型·报告').split('·');
+  const outputs = (model.outputs || '工作文档·实操报告·项目成果').split('·');
   const tasks = [];
   const taskTitles = [
-    '岗位调研与能力拆解', '核心工具入门', '行业案例研究', '基础技能练习',
-    '竞品分析报告', '工具深度实操', '模拟项目启动', '核心模块交付',
+    '岗位调研与能力拆解', '核心技能入门', '行业案例研究', '基础技能练习',
+    '实操分析报告', '技能深度实操', '模拟项目启动', '核心模块交付',
     '项目复盘与迭代', '成果文档化', '作品集整理', '面试题库梳理',
     '简历项目描述', '模拟面试练习', '求职材料终审',
   ];
 
-  const taskTypes = ['调研报告', '工具实操', '案例分析', '文档输出', '项目交付', '模拟练习'];
+  const taskTypes = ['调研报告', '实操练习', '案例分析', '文档输出', '项目交付', '模拟练习'];
   const icons = ['📋', '🔧', '📊', '📝', '🎯', '💡', '🔍', '✨', '🎨', '📐'];
 
   for (let i = 0; i < 30; i++) {
