@@ -3045,18 +3045,24 @@ async function startGeneration() {
 
   // Step 2: AI 一次性生成分析+能力模型+任务计划
   markStep();
-  const jdText = State.userInput.jd ? `\n目标岗位JD:\n${State.userInput.jd.substring(0, 800)}` : '';
+  const jdText = State.userInput.jd ? `\n目标岗位JD原文:\n${State.userInput.jd.substring(0, 800)}` : '';
+  const jdInstruction = State.userInput.jd
+    ? `重要：用户粘贴了真实岗位JD。你必须以JD内容为准，分析JD中的实际岗位名称和工作内容，生成与JD完全匹配的计划。如果JD中的岗位与用户填写的"${State.userInput.role}"不一致，以JD为准。在返回的JSON中加入"detectedRole"字段标注从JD中识别出的真实岗位名称。`
+    : '';
   const masterPrompt = `你是职业规划专家。用户信息：
 目标场景: ${State.userInput.scene}
-目标岗位: ${State.userInput.role}
+用户填写的岗位: ${State.userInput.role}
 目标级别: ${State.userInput.level}
 已有技能: ${State.userInput.skills}
 已有经历: ${State.userInput.experience}
 每日可投入: ${State.userInput.timePerDay}小时
 冲刺周期: ${State.userInput.sprintDays}天${jdText}
 
+${jdInstruction}
+
 请严格用以下JSON格式返回（不要加任何markdown标记或代码块）：
 {
+  "detectedRole": "从JD中识别的真实岗位名称（如果无JD则填用户填写的岗位）",
   "analysis": "2-3句话分析用户核心优势、短板、建议冲刺策略",
   "skills": [
     {"name": "能力维度1", "current": 30, "target": 80},
@@ -3079,11 +3085,12 @@ async function startGeneration() {
 }
 
 要求：
-1. skills 必须6个维度，名称2-4字
-2. tasks 生成${State.userInput.sprintDays}个任务，每个任务都要贴合"${State.userInput.role}"岗位的实际工作内容
-3. tasks 的 output 和 outputType 要具体可展示
-4. phases 分4个阶段，对应冲刺周期
-5. 所有内容用中文`;
+1. skills 必须6个维度，名称2-4字，必须贴合detectedRole岗位
+2. tasks 生成${State.userInput.sprintDays}个任务，每个任务都要贴合detectedRole岗位的实际工作内容
+3. tasks 的内容必须与JD中的工作职责直接相关，不要生搬硬套其他岗位的模板
+4. tasks 的 output 和 outputType 要具体可展示
+5. phases 分4个阶段，对应冲刺周期
+6. 所有内容用中文`;
 
   const masterResult = await callAI(masterPrompt, '你是CareerPilot职路引擎的AI核心，专注于职业成长路径规划。必须返回合法JSON。', 60);
 
@@ -3094,6 +3101,11 @@ async function startGeneration() {
         clean = clean.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
       }
       const data = JSON.parse(clean);
+
+      // 如果 AI 从 JD 中识别出真实岗位，覆盖用户填写值
+      if (data.detectedRole && data.detectedRole.trim() && data.detectedRole !== State.userInput.role) {
+        State.userInput.role = data.detectedRole.trim();
+      }
 
       State.aiAnalysis = data.analysis || null;
       State.aiRoleModel = {
