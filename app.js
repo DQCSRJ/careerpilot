@@ -37,6 +37,7 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
     getApiKey();
   }
   if (!AI_CONFIG.apiKey) {
+    State.aiError = 'API Key 未配置';
     return null;
   }
 
@@ -47,7 +48,8 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
   messages.push({ role: 'user', content: prompt });
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), (timeoutSec || 30) * 1000);
+  const timeout = (timeoutSec || 30) * 1000;
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
     const res = await fetch(AI_CONFIG.apiUrl, {
@@ -60,24 +62,43 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
         model: AI_CONFIG.model,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 4000,
       }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
     if (!res.ok) {
+      const errText = await res.text().catch(() => '');
       if (res.status === 401) {
-        toast('API Key 无效，请检查', '');
+        State.aiError = 'API Key 无效（401），请检查密钥是否正确';
+      } else if (res.status === 429) {
+        State.aiError = 'API 调用频率超限（429），请稍后重试';
+      } else if (res.status === 500) {
+        State.aiError = 'DeepSeek 服务器错误（500），请稍后重试';
+      } else {
+        State.aiError = `API 返回错误 ${res.status}：${errText.substring(0, 100)}`;
       }
-      console.error('AI API error:', res.status);
+      console.error('AI API error:', res.status, errText);
       return null;
     }
     const data = await res.json();
+    if (!data.choices || !data.choices[0]) {
+      State.aiError = 'API 返回格式异常：无 choices 数据';
+      return null;
+    }
+    State.aiError = null;
     return data.choices[0].message.content;
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error('AI call failed:', err.name === 'AbortError' ? 'timeout' : err);
+    if (err.name === 'AbortError') {
+      State.aiError = `AI 请求超时（${timeoutSec || 30}秒），DeepSeek 响应过慢`;
+    } else if (err.message && err.message.includes('Failed to fetch')) {
+      State.aiError = '网络请求失败（CORS 或网络不通），请检查网络连接';
+    } else {
+      State.aiError = `AI 调用异常：${err.message || err.name || '未知错误'}`;
+    }
+    console.error('AI call failed:', State.aiError, err);
     return null;
   }
 }
@@ -237,6 +258,7 @@ const State = {
   aiAnalysis: null,
   aiRoleModel: null,
   aiTasks: null,
+  aiError: null,
 };
 
 /* -------- 岗位JD要求数据库 --------
@@ -591,23 +613,69 @@ ${jdInstruction}
   markStep();
   await sleep(200);
 
-  // AI 失败时不进入主界面，提示重试
+  // AI 失败时用动态 fallback，仍然进入主界面
   if (!State.aiTasks || State.aiTasks.length === 0) {
-    // 标记所有步骤为失败
-    for (let i = idx; i < steps.length; i++) {
-      if (container.children[i]) {
-        container.children[i].classList.add('done');
-        container.children[i].querySelector('.lcheck').textContent = '✗';
-        container.children[i].style.opacity = '0.4';
-      }
+    console.warn('AI generation failed, using dynamic fallback');
+    const role = State.userInput.role;
+    const sprintDays = State.userInput.sprintDays;
+    
+    // 动态能力模型（基于用户填写的岗位名称，无固定话术）
+    State.aiAnalysis = `针对${role}岗位，建议从岗位核心认知出发，逐步建立实操能力，最终形成可展示的成果。`;
+    State.aiRoleModel = {
+      skills: [
+        { name: '岗位认知', current: 25, target: 75 },
+        { name: '核心技能', current: 30, target: 80 },
+        { name: '实操能力', current: 20, target: 78 },
+        { name: '沟通表达', current: 35, target: 72 },
+        { name: '问题解决', current: 30, target: 76 },
+        { name: '职业素养', current: 40, target: 80 },
+      ],
+      phases: [
+        { name: '认知筑基', desc: `建立${role}岗位核心认知` },
+        { name: '技能实操', desc: '动手实践核心技能' },
+        { name: '项目实战', desc: '完成完整项目交付' },
+        { name: '求职表达', desc: '转化为求职素材' },
+      ],
+      outputs: '岗位调研报告 · 实操练习 · 项目成果',
+      keywords: `${role} · 岗位认知 · 实操能力 · 沟通表达 · 职业素养`,
+    };
+    
+    // 动态任务（基于用户填写的岗位名称）
+    const phaseNames = State.aiRoleModel.phases.map(p => p.name);
+    const taskTypes = ['调研报告', '实操练习', '案例分析', '文档输出', '项目交付', '模拟练习'];
+    const icons = ['📋', '🔧', '📊', '📝', '🎯', '💡', '🔍', '✨'];
+    const taskTitles = [
+      `${role}岗位调研`, '核心技能入门', '行业案例研究', '基础技能练习',
+      '实操分析报告', '技能深度实操', '模拟项目启动', '核心模块交付',
+      '项目复盘与迭代', '成果文档化', '作品集整理', '面试题库梳理',
+      '简历项目描述', '模拟面试练习', '求职材料终审',
+    ];
+    
+    State.aiTasks = [];
+    for (let i = 0; i < sprintDays; i++) {
+      const phaseIdx = Math.min(Math.floor(i / Math.ceil(sprintDays / 4)), 3);
+      const phase = phaseNames[phaseIdx];
+      const title = taskTitles[i % taskTitles.length];
+      State.aiTasks.push({
+        day: i + 1,
+        phase: phase,
+        title: `${phase}·${title}`,
+        desc: `针对${role}岗位，完成${title}。`,
+        time: State.userInput.timePerDay || 1.5,
+        output: {
+          type: taskTypes[i % taskTypes.length],
+          title: title,
+          desc: `完成${title}，形成可展示的成果`,
+          icon: icons[i % icons.length],
+          banner: 'b' + ((i % 5) + 1),
+        },
+        steps: [`了解${title}的核心要点`, '动手实践', '整理成果'],
+        tools: ['在线工具', '模板文档'],
+        checklist: ['已完成产出', '成果可展示'],
+      });
     }
-    $('#loading-title').textContent = 'AI 生成失败，请重试';
-    $('#loading-title').style.color = '#e74c3c';
-    setTimeout(() => {
-      showView('view-form');
-      toast('AI 调用失败，请检查网络后重试', '');
-    }, 2000);
-    return;
+    
+    toast('AI 暂时不可用：' + (State.aiError || '未知原因') + '。已使用基础模板生成', '');
   }
 
   // Step 3: 计算差距
@@ -639,7 +707,11 @@ ${jdInstruction}
   setTimeout(() => {
     showView('view-app');
     renderAll();
-    toast('AI 已生成「' + State.userInput.role + '」专属冲刺计划！', 'success');
+    if (State.aiError) {
+      toast('AI 失败：' + State.aiError + '。已用基础模板生成', '');
+    } else {
+      toast('AI 已生成「' + State.userInput.role + '」专属冲刺计划！', 'success');
+    }
   }, 400);
 }
 
@@ -2016,6 +2088,13 @@ function renderPersonalization() {
         <span class="pcard-badge ai">DeepSeek V4 Pro · 真实 AI</span>
       </div>
       <div class="pcard-body">
+        ${State.aiError ? `
+        <div class="pcard-section">
+          <div class="ps-label" style="color:#e74c3c">⚠️ AI 调用失败</div>
+          <div class="ps-text" style="color:#e74c3c">${State.aiError}</div>
+          <div class="ps-text" style="margin-top:8px">已使用基础模板生成计划，部分内容可能不够精准。可刷新重试。</div>
+        </div>
+        ` : ''}
         ${aiText ? `
         <div class="pcard-section">
           <div class="ps-label">AI 分析结论</div>
