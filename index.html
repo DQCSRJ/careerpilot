@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>职路引擎 CareerPilot · Demo</title>
-  <link rel="stylesheet" href="styles.css?v=20260628v10">
+  <link rel="stylesheet" href="styles.css?v=20260628v11">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
       <div class="form-grid">
         <div class="field field-full">
           <label>第 1 步 · 目标场景</label>
-          <input type="text" id="in-scene" class="form-input" list="scene-list" value="求职准备" placeholder="例如：求职准备 / 转岗转型 / 作品集打造 / 面试冲刺">
+          <input type="text" id="in-scene" class="form-input" list="scene-list" placeholder="例如：求职准备 / 转岗转型 / 作品集打造 / 面试冲刺">
           <datalist id="scene-list">
             <option value="求职准备">
             <option value="转岗转型">
@@ -49,7 +49,7 @@
 
         <div class="field field-full">
           <label>第 2 步 · 目标岗位</label>
-          <input type="text" id="in-role" class="form-input" list="role-list" value="AI产品经理" placeholder="例如：AI产品经理 / UI设计师 / 数据分析师 / 新媒体运营 / 产品经理">
+          <input type="text" id="in-role" class="form-input" list="role-list" placeholder="例如：AI产品经理 / UI设计师 / 数据分析师 / 新媒体运营 / 产品经理">
           <datalist id="role-list">
             <option value="AI产品经理">
             <option value="AI应用开发工程师">
@@ -71,7 +71,7 @@
 
         <div class="field field-full">
           <label>第 3 步 · 目标级别</label>
-          <input type="text" id="in-level" class="form-input" list="level-list" value="校招" placeholder="例如：实习 / 校招 / 1-3年社招 / 转岗 / 资深">
+          <input type="text" id="in-level" class="form-input" list="level-list" placeholder="例如：实习 / 校招 / 1-3年社招 / 转岗 / 资深">
           <datalist id="level-list">
             <option value="实习">
             <option value="校招">
@@ -84,12 +84,12 @@
 
         <div class="field field-full">
           <label>已有技能基础</label>
-          <textarea id="in-skills" rows="2" placeholder="例如：Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL">Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL</textarea>
+          <textarea id="in-skills" rows="2" placeholder="例如：Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL"></textarea>
         </div>
 
         <div class="field field-full">
           <label>已有项目/实习经历</label>
-          <textarea id="in-exp" rows="3" placeholder="描述你的项目、实习或比赛经历">在校期间做过一个课程管理系统的需求分析和原型设计，参加过学校的创新创业比赛，获得校级二等奖。</textarea>
+          <textarea id="in-exp" rows="3" placeholder="描述你的项目、实习或比赛经历"></textarea>
         </div>
 
         <div class="field field-full">
@@ -450,6 +450,6 @@
   <!-- ============ Toast ============ -->
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260628v10"></script>
+  <script src="app.js?v=20260628v11"></script>
 </body>
 </html>
