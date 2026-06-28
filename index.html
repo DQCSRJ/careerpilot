@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>职路引擎 CareerPilot · Demo</title>
-  <link rel="stylesheet" href="styles.css?v=20260628v3">
+  <link rel="stylesheet" href="styles.css?v=20260628v4">
 </head>
 <body>
 
@@ -35,7 +35,7 @@
 
       <div class="form-grid">
         <div class="field field-full">
-          <label>第 1 步 · 目标场景 <span class="hint">你想用这个路径做什么</span></label>
+          <label>第 1 步 · 目标场景</label>
           <input type="text" id="in-scene" class="form-input" list="scene-list" value="求职准备" placeholder="例如：求职准备 / 转岗转型 / 作品集打造 / 面试冲刺">
           <datalist id="scene-list">
             <option value="求职准备">
@@ -48,7 +48,7 @@
         </div>
 
         <div class="field field-full">
-          <label>第 2 步 · 目标岗位 <span class="hint">填写你想从事的岗位，支持任意行业</span></label>
+          <label>第 2 步 · 目标岗位</label>
           <input type="text" id="in-role" class="form-input" list="role-list" value="AI产品经理" placeholder="例如：AI产品经理 / UI设计师 / 数据分析师 / 新媒体运营 / 产品经理">
           <datalist id="role-list">
             <option value="AI产品经理">
@@ -70,7 +70,7 @@
         </div>
 
         <div class="field field-full">
-          <label>第 3 步 · 目标级别 <span class="hint">你的目标职级</span></label>
+          <label>第 3 步 · 目标级别</label>
           <input type="text" id="in-level" class="form-input" list="level-list" value="校招" placeholder="例如：实习 / 校招 / 1-3年社招 / 转岗 / 资深">
           <datalist id="level-list">
             <option value="实习">
@@ -83,17 +83,17 @@
         </div>
 
         <div class="field field-full">
-          <label>已有技能基础 <span class="hint">用逗号分隔，例如：Python基础, 会用Figma, 做过课程项目</span></label>
+          <label>已有技能基础</label>
           <textarea id="in-skills" rows="2" placeholder="例如：Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL">Python基础, 会用Figma, 做过一个课程管理系统, 了解SQL</textarea>
         </div>
 
         <div class="field field-full">
-          <label>已有项目/实习经历 <span class="hint">选填，帮助 CareerPilot 更准确评估</span></label>
+          <label>已有项目/实习经历</label>
           <textarea id="in-exp" rows="3" placeholder="描述你的项目、实习或比赛经历">在校期间做过一个课程管理系统的需求分析和原型设计，参加过学校的创新创业比赛，获得校级二等奖。</textarea>
         </div>
 
         <div class="field field-full">
-          <label>目标岗位 JD（选填） <span class="hint">粘贴真实招聘JD，AI 会自动解析岗位要求</span></label>
+          <label>目标岗位 JD（选填）</label>
           <textarea id="in-jd" rows="3" placeholder="粘贴目标岗位的招聘JD原文，AI 会自动提取硬性要求并生成匹配报告..."></textarea>
         </div>
 
@@ -450,6 +450,6 @@
   <!-- ============ Toast ============ -->
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260628v3"></script>
+  <script src="app.js?v=20260628v4"></script>
 </body>
 </html>
