@@ -2976,6 +2976,9 @@ function initForm() {
       return;
     }
 
+    // 清除旧缓存，确保重新生成
+    clearState();
+
     State.userInput = {
       scene: scene,
       role: role,
@@ -3152,6 +3155,25 @@ ${jdInstruction}
   markStep();
   await sleep(200);
 
+  // AI 失败时不进入主界面，提示重试
+  if (!State.aiTasks || State.aiTasks.length === 0) {
+    // 标记所有步骤为失败
+    for (let i = idx; i < steps.length; i++) {
+      if (container.children[i]) {
+        container.children[i].classList.add('done');
+        container.children[i].querySelector('.lcheck').textContent = '✗';
+        container.children[i].style.opacity = '0.4';
+      }
+    }
+    $('#loading-title').textContent = 'AI 生成失败，请重试';
+    $('#loading-title').style.color = '#e74c3c';
+    setTimeout(() => {
+      showView('view-form');
+      toast('AI 调用失败，请检查网络后重试', '');
+    }, 2000);
+    return;
+  }
+
   // Step 3: 计算差距
   markStep();
   buildProfile();
@@ -3181,11 +3203,7 @@ ${jdInstruction}
   setTimeout(() => {
     showView('view-app');
     renderAll();
-    if (State.aiTasks) {
-      toast('AI 已生成' + State.userInput.role + '专属冲刺计划！', 'success');
-    } else {
-      toast('AI 超时，已使用基础模板生成计划', '');
-    }
+    toast('AI 已生成「' + State.userInput.role + '」专属冲刺计划！', 'success');
   }, 400);
 }
 
