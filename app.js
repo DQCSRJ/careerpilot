@@ -62,7 +62,7 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
         model: AI_CONFIG.model,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 8000,
+        max_tokens: 12000,
       }),
       signal: controller.signal,
     });
