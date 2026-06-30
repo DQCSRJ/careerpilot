@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>职路引擎 CareerPilot · Demo</title>
-  <link rel="stylesheet" href="styles.css?v=20260628v11">
+  <link rel="stylesheet" href="styles.css?v=20260630v1">
 </head>
 <body>
 
@@ -131,10 +131,15 @@
         <div class="orb-ring r1"></div>
         <div class="orb-ring r2"></div>
         <div class="orb-ring r3"></div>
-        <div class="orb-core">CP</div>
+        <div class="orb-core">AI</div>
       </div>
-      <h2 id="loading-title">正在分析你的职业目标…</h2>
+      <h2 id="loading-title">正在启动 AI 规划引擎…</h2>
+      <div class="loading-progress-bar">
+        <div class="loading-progress-fill" id="loading-progress-fill" style="width:0%"></div>
+      </div>
+      <div class="loading-progress-pct" id="loading-progress-pct">0%</div>
       <div class="loading-steps" id="loading-steps"></div>
+      <div class="loading-ai-status" id="loading-ai-status"></div>
     </div>
   </section>
 
@@ -450,6 +455,6 @@
   <!-- ============ Toast ============ -->
   <div class="toast" id="toast"></div>
 
-  <script src="app.js?v=20260628v12"></script>
+  <script src="app.js?v=20260630v1"></script>
 </body>
 </html>
