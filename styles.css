@@ -747,6 +747,16 @@ input[type="range"]::-webkit-slider-thumb {
 .gap-bar-fill.current { background: var(--accent-2); }
 .gap-bar-fill.target { background: var(--accent); }
 .gap-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.gap-ai-hint {
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #5b6578;
+  background: rgba(91, 44, 214, 0.04);
+  border-radius: 4px;
+  border-left: 2px solid rgba(91, 44, 214, 0.3);
+}
 
 /* 今日任务 */
 .day-tag {
@@ -1172,6 +1182,16 @@ input[type="range"]::-webkit-slider-thumb {
 .mb-section { margin-bottom: 22px; }
 .mb-label { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
 .mb-text { font-size: 14px; line-height: 1.8; color: #2a3050; }
+.mb-jd-req {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5b2cd6;
+  background: rgba(91, 44, 214, 0.06);
+  border-left: 3px solid #5b2cd6;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+}
 .mb-template {
   background: var(--soft);
   border-radius: var(--r-sm);
