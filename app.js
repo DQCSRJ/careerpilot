@@ -2,11 +2,11 @@
    职路引擎 CareerPilot · Demo Engine
    ============================================ */
 
-/* -------- DeepSeek V4 Pro AI 引擎 -------- */
+/* -------- 职路引擎 AI 配置 -------- */
 const AI_CONFIG = {
   apiKey: '',
   apiUrl: 'https://api.deepseek.com/v1/chat/completions',
-  model: 'deepseek-v4-pro',
+  model: 'deepseek-chat',
 };
 
 /* -------- 内置凭证（编码存储，非明文） -------- */
@@ -75,7 +75,7 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
       } else if (res.status === 429) {
         State.aiError = 'API 调用频率超限（429），请稍后重试';
       } else if (res.status === 500) {
-        State.aiError = 'DeepSeek 服务器错误（500），请稍后重试';
+        State.aiError = '职路引擎服务器错误（500），请稍后重试';
       } else {
         State.aiError = `API 返回错误 ${res.status}：${errText.substring(0, 100)}`;
       }
@@ -92,7 +92,7 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      State.aiError = `AI 请求超时（${timeoutSec || 30}秒），DeepSeek 响应过慢`;
+      State.aiError = `AI 请求超时（${timeoutSec || 30}秒），职路引擎响应过慢`;
     } else if (err.message && err.message.includes('Failed to fetch')) {
       State.aiError = '网络请求失败（CORS 或网络不通），请检查网络连接';
     } else {
@@ -522,7 +522,7 @@ async function startGeneration() {
 
   // Step 2: AI 一次性生成分析+能力模型+任务计划（带自动重试）
   markStep();
-  setAIStatus('正在调用 DeepSeek V4 Pro 生成职业画像…');
+  setAIStatus('正在调用职路引擎生成职业画像…');
 
   const jdText = State.userInput.jd ? `\n目标岗位JD原文:\n${State.userInput.jd.substring(0, 800)}` : '';
   const jdInstruction = State.userInput.jd
@@ -580,9 +580,9 @@ ${jdInstruction}
     if (retryCount > 0) {
       setAIStatus(`AI 第 ${retryCount} 次调用失败：${State.aiError || '未知'}。正在重试 (${retryCount}/${maxRetries})…`, 'error');
       await sleep(1500);
-      setAIStatus(`第 ${retryCount + 1} 次尝试调用 DeepSeek V4 Pro…`);
+      setAIStatus(`第 ${retryCount + 1} 次尝试调用职路引擎…`);
     } else {
-      setAIStatus('正在等待 DeepSeek V4 Pro 响应（预计 30-60 秒）…');
+      setAIStatus('正在等待职路引擎响应（预计 10-30 秒）…');
     }
 
     masterResult = await callAI(masterPrompt, '你是CareerPilot职路引擎的AI核心，专注于职业成长路径规划。必须返回合法JSON。', 90);
@@ -2090,7 +2090,7 @@ function renderPersonalization() {
     <div class="pcard">
       <div class="pcard-head">
         <span class="pcard-title">AI 个性化分析</span>
-        <span class="pcard-badge ai">DeepSeek V4 Pro · 真实 AI</span>
+        <span class="pcard-badge ai">职路引擎 · AI 驱动</span>
       </div>
       <div class="pcard-body">
         ${State.aiError ? `
