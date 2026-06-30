@@ -474,7 +474,7 @@ async function startGeneration() {
   `).join('');
 
   const titles = [
-    '正在分析你的职业目标…',
+    '正在解析你的职业目标…',
     'AI 正在生成职业画像…',
     '正在分析能力差距…',
     'AI 正在规划冲刺路线…',
@@ -484,7 +484,21 @@ async function startGeneration() {
 
   let idx = 0;
 
-  function markStep(done) {
+  // 进度条和状态更新工具
+  function setProgress(pct) {
+    const fill = $('#loading-progress-fill');
+    const pctEl = $('#loading-progress-pct');
+    if (fill) fill.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+  }
+  function setAIStatus(text, type) {
+    const el = $('#loading-ai-status');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'loading-ai-status' + (type ? ' ' + type : '');
+  }
+
+  function markStep() {
     if (idx > 0) {
       const prev = container.children[idx - 1];
       prev.classList.remove('active');
@@ -496,16 +510,20 @@ async function startGeneration() {
       cur.classList.add('active');
       cur.querySelector('.lcheck').textContent = '·';
       $('#loading-title').textContent = titles[idx];
+      setProgress((idx / steps.length) * 100);
       idx++;
     }
   }
 
   // Step 1: 解析目标
   markStep();
-  await sleep(500);
+  setAIStatus('读取用户输入：' + State.userInput.role + ' / ' + State.userInput.level);
+  await sleep(600);
 
-  // Step 2: AI 一次性生成分析+能力模型+任务计划
+  // Step 2: AI 一次性生成分析+能力模型+任务计划（带自动重试）
   markStep();
+  setAIStatus('正在调用 DeepSeek V4 Pro 生成职业画像…');
+
   const jdText = State.userInput.jd ? `\n目标岗位JD原文:\n${State.userInput.jd.substring(0, 800)}` : '';
   const jdInstruction = State.userInput.jd
     ? `重要：用户粘贴了真实岗位JD。你必须以JD内容为准，分析JD中的实际岗位名称和工作内容，生成与JD完全匹配的计划。如果JD中的岗位与用户填写的"${State.userInput.role}"不一致，以JD为准。在返回的JSON中加入"detectedRole"字段标注从JD中识别出的真实岗位名称。`
@@ -553,7 +571,32 @@ ${jdInstruction}
 5. phases 分4个阶段，对应冲刺周期
 6. 所有内容用中文`;
 
-  const masterResult = await callAI(masterPrompt, '你是CareerPilot职路引擎的AI核心，专注于职业成长路径规划。必须返回合法JSON。', 60);
+  // 自动重试最多 3 次
+  let masterResult = null;
+  let retryCount = 0;
+  const maxRetries = 3;
+
+  while (retryCount < maxRetries && !masterResult) {
+    if (retryCount > 0) {
+      setAIStatus(`AI 第 ${retryCount} 次调用失败：${State.aiError || '未知'}。正在重试 (${retryCount}/${maxRetries})…`, 'error');
+      await sleep(1500);
+      setAIStatus(`第 ${retryCount + 1} 次尝试调用 DeepSeek V4 Pro…`);
+    } else {
+      setAIStatus('正在等待 DeepSeek V4 Pro 响应（预计 30-60 秒）…');
+    }
+
+    masterResult = await callAI(masterPrompt, '你是CareerPilot职路引擎的AI核心，专注于职业成长路径规划。必须返回合法JSON。', 90);
+    retryCount++;
+
+    if (masterResult) {
+      setAIStatus('AI 响应成功！正在解析返回数据…', 'success');
+      break;
+    }
+
+    if (retryCount < maxRetries) {
+      setAIStatus(`AI 第 ${retryCount} 次调用失败：${State.aiError || '未知'}，准备重试…`, 'error');
+    }
+  }
 
   if (masterResult) {
     try {
@@ -563,9 +606,9 @@ ${jdInstruction}
       }
       const data = JSON.parse(clean);
 
-      // 如果 AI 从 JD 中识别出真实岗位，覆盖用户填写值
       if (data.detectedRole && data.detectedRole.trim() && data.detectedRole !== State.userInput.role) {
         State.userInput.role = data.detectedRole.trim();
+        setAIStatus('AI 从 JD 中识别岗位：' + State.userInput.role, 'success');
       }
 
       State.aiAnalysis = data.analysis || null;
@@ -598,104 +641,70 @@ ${jdInstruction}
         tools: t.tools || ['在线工具', '模板文档'],
         checklist: t.checklist || ['已完成产出', '成果可展示'],
       }));
+
+      setAIStatus('AI 已生成 ' + State.aiTasks.length + ' 个任务，能力模型解析完成', 'success');
+      State.aiError = null;
     } catch (e) {
       console.error('AI master parse failed:', e);
+      State.aiError = 'AI 返回的 JSON 格式解析失败';
+      setAIStatus('AI 返回数据解析失败：' + e.message, 'error');
       State.aiAnalysis = null;
       State.aiRoleModel = null;
       State.aiTasks = null;
     }
   } else {
+    State.aiError = State.aiError || `AI 连续 ${maxRetries} 次调用均失败`;
+    setAIStatus(State.aiError + '，请检查网络后重试', 'error');
     State.aiAnalysis = null;
     State.aiRoleModel = null;
     State.aiTasks = null;
   }
 
   markStep();
-  await sleep(200);
+  await sleep(300);
 
-  // AI 失败时用动态 fallback，仍然进入主界面
+  // AI 彻底失败时：显示错误并提供返回按钮
   if (!State.aiTasks || State.aiTasks.length === 0) {
-    console.warn('AI generation failed, using dynamic fallback');
-    const role = State.userInput.role;
-    const sprintDays = State.userInput.sprintDays;
-    
-    // 动态能力模型（基于用户填写的岗位名称，无固定话术）
-    State.aiAnalysis = `针对${role}岗位，建议从岗位核心认知出发，逐步建立实操能力，最终形成可展示的成果。`;
-    State.aiRoleModel = {
-      skills: [
-        { name: '岗位认知', current: 25, target: 75 },
-        { name: '核心技能', current: 30, target: 80 },
-        { name: '实操能力', current: 20, target: 78 },
-        { name: '沟通表达', current: 35, target: 72 },
-        { name: '问题解决', current: 30, target: 76 },
-        { name: '职业素养', current: 40, target: 80 },
-      ],
-      phases: [
-        { name: '认知筑基', desc: `建立${role}岗位核心认知` },
-        { name: '技能实操', desc: '动手实践核心技能' },
-        { name: '项目实战', desc: '完成完整项目交付' },
-        { name: '求职表达', desc: '转化为求职素材' },
-      ],
-      outputs: '岗位调研报告 · 实操练习 · 项目成果',
-      keywords: `${role} · 岗位认知 · 实操能力 · 沟通表达 · 职业素养`,
-    };
-    
-    // 动态任务（基于用户填写的岗位名称）
-    const phaseNames = State.aiRoleModel.phases.map(p => p.name);
-    const taskTypes = ['调研报告', '实操练习', '案例分析', '文档输出', '项目交付', '模拟练习'];
-    const icons = ['📋', '🔧', '📊', '📝', '🎯', '💡', '🔍', '✨'];
-    const taskTitles = [
-      `${role}岗位调研`, '核心技能入门', '行业案例研究', '基础技能练习',
-      '实操分析报告', '技能深度实操', '模拟项目启动', '核心模块交付',
-      '项目复盘与迭代', '成果文档化', '作品集整理', '面试题库梳理',
-      '简历项目描述', '模拟面试练习', '求职材料终审',
-    ];
-    
-    State.aiTasks = [];
-    for (let i = 0; i < sprintDays; i++) {
-      const phaseIdx = Math.min(Math.floor(i / Math.ceil(sprintDays / 4)), 3);
-      const phase = phaseNames[phaseIdx];
-      const title = taskTitles[i % taskTitles.length];
-      State.aiTasks.push({
-        day: i + 1,
-        phase: phase,
-        title: `${phase}·${title}`,
-        desc: `针对${role}岗位，完成${title}。`,
-        time: State.userInput.timePerDay || 1.5,
-        output: {
-          type: taskTypes[i % taskTypes.length],
-          title: title,
-          desc: `完成${title}，形成可展示的成果`,
-          icon: icons[i % icons.length],
-          banner: 'b' + ((i % 5) + 1),
-        },
-        steps: [`了解${title}的核心要点`, '动手实践', '整理成果'],
-        tools: ['在线工具', '模板文档'],
-        checklist: ['已完成产出', '成果可展示'],
-      });
+    setProgress(100);
+    for (let i = idx; i < steps.length; i++) {
+      if (container.children[i]) {
+        container.children[i].classList.add('done');
+        container.children[i].querySelector('.lcheck').textContent = '✗';
+        container.children[i].style.opacity = '0.3';
+      }
     }
-    
-    toast('AI 暂时不可用：' + (State.aiError || '未知原因') + '。已使用基础模板生成', '');
+    $('#loading-title').textContent = 'AI 生成失败';
+    setAIStatus('错误详情：' + (State.aiError || '未知') + '。请检查网络连接后重新提交。', 'error');
+    setTimeout(() => {
+      showView('view-form');
+      toast('AI 调用失败：' + (State.aiError || '未知原因') + '，请重试', '');
+    }, 3000);
+    return;
   }
 
   // Step 3: 计算差距
   markStep();
+  setAIStatus('计算能力差距，排序优先补齐方向…');
   buildProfile();
-  await sleep(200);
+  await sleep(300);
 
   // Step 4: 生成计划
   markStep();
-  await sleep(200);
+  setAIStatus('已生成 ' + State.userInput.sprintDays + ' 天个性化冲刺计划');
+  await sleep(300);
 
   // Step 5: 拆解任务
   markStep();
-  await sleep(200);
+  setAIStatus('拆解每日任务执行模板…');
+  await sleep(300);
 
   // Step 6: 初始化
   markStep();
-  await sleep(200);
+  setAIStatus('初始化作品集与表达引擎…');
+  await sleep(300);
 
   // 完成
+  setProgress(100);
   if (idx > 0) {
     const prev = container.children[idx - 1];
     prev.classList.remove('active');
@@ -707,12 +716,8 @@ ${jdInstruction}
   setTimeout(() => {
     showView('view-app');
     renderAll();
-    if (State.aiError) {
-      toast('AI 失败：' + State.aiError + '。已用基础模板生成', '');
-    } else {
-      toast('AI 已生成「' + State.userInput.role + '」专属冲刺计划！', 'success');
-    }
-  }, 400);
+    toast('AI 已生成「' + State.userInput.role + '」专属冲刺计划！', 'success');
+  }, 500);
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
