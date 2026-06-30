@@ -526,50 +526,59 @@ async function startGeneration() {
 
   const jdText = State.userInput.jd ? `\n目标岗位JD原文:\n${State.userInput.jd.substring(0, 800)}` : '';
   const jdInstruction = State.userInput.jd
-    ? `重要：用户粘贴了真实岗位JD。你必须以JD内容为准，分析JD中的实际岗位名称和工作内容，生成与JD完全匹配的计划。如果JD中的岗位与用户填写的"${State.userInput.role}"不一致，以JD为准。在返回的JSON中加入"detectedRole"字段标注从JD中识别出的真实岗位名称。`
-    : '';
-  const masterPrompt = `你是职业规划专家。用户信息：
-目标场景: ${State.userInput.scene}
-用户填写的岗位: ${State.userInput.role}
-目标级别: ${State.userInput.level}
-已有技能: ${State.userInput.skills}
-已有经历: ${State.userInput.experience}
-每日可投入: ${State.userInput.timePerDay}小时
-冲刺周期: ${State.userInput.sprintDays}天${jdText}
+    ? `\n【目标岗位JD原文】\n${State.userInput.jd.substring(0, 1200)}\n\n【JD分析要求】\n你必须以JD内容为核心依据，执行以下分析：\n1. 从JD中识别真实岗位名称（填入detectedRole），如果与用户填写的"${State.userInput.role}"不一致，以JD为准\n2. 逐条拆解JD中的招聘要求（学历、技能、经验、证书等），提取出该岗位的核心能力维度\n3. 将用户已有技能和经历与JD要求逐条对比，评估每个维度的匹配度（0-100），匹配度高的current值高，匹配度低的current值低\n4. 为每个能力维度设定target值（该岗位合格从业者应达到的水平，通常70-85）\n5. 每个任务必须直接对应JD中的某项具体要求，标题和描述要体现"这个任务是在补齐JD中的哪个要求"\n6. 任务产出物必须是可以用于面试展示的真实成果（如：JD要求"熟悉Excel"→任务产出"数据分析报告.xlsx"）`
+    : `\n【无JD模式】\n用户未粘贴JD，请根据"${State.userInput.role}"岗位的行业标准要求进行分析：\n1. 基于该岗位的通用招聘要求提取核心能力维度\n2. 根据用户填写的已有技能和经历评估各维度匹配度\n3. 任务内容要贴合该岗位的真实日常工作场景`;
 
+  const masterPrompt = `你是一名拥有10年经验的职业规划师，擅长从招聘JD出发，为求职者制定可执行的能力补齐计划。
+
+【用户画像】
+目标场景: ${State.userInput.scene}
+目标岗位: ${State.userInput.role}
+目标级别: ${State.userInput.level}
+已有技能: ${State.userInput.skills || '未填写'}
+已有经历: ${State.userInput.experience || '未填写'}
+每日可投入: ${State.userInput.timePerDay}小时
+冲刺周期: ${State.userInput.sprintDays}天
 ${jdInstruction}
 
-请严格用以下JSON格式返回（不要加任何markdown标记或代码块）：
+【输出要求】
+请严格按以下JSON格式返回（不要加任何markdown标记或代码块）：
 {
-  "detectedRole": "从JD中识别的真实岗位名称（如果无JD则填用户填写的岗位）",
-  "analysis": "2-3句话分析用户核心优势、短板、建议冲刺策略",
+  "detectedRole": "从JD识别的真实岗位名称",
+  "analysis": "3-4句话：①用户与JD的核心匹配点 ②最大差距在哪些维度 ③冲刺策略建议（先补什么后补什么）",
   "skills": [
-    {"name": "能力维度1", "current": 30, "target": 80},
-    {"name": "能力维度2", "current": 40, "target": 75},
-    {"name": "能力维度3", "current": 20, "target": 70},
-    {"name": "能力维度4", "current": 35, "target": 78},
-    {"name": "能力维度5", "current": 25, "target": 72},
-    {"name": "能力维度6", "current": 30, "target": 76}
+    {"name": "能力维度名（2-4字）", "current": 匹配度0-100, "target": 该岗位合格水平70-85, "gap": "差距说明（一句话）"}
   ],
   "phases": [
-    {"name": "阶段1名称", "desc": "阶段描述"},
-    {"name": "阶段2名称", "desc": "阶段描述"},
-    {"name": "阶段3名称", "desc": "阶段描述"},
-    {"name": "阶段4名称", "desc": "阶段描述"}
+    {"name": "阶段1名称（4-6字）", "desc": "这个阶段解决什么问题，对应JD的哪些要求"},
+    {"name": "阶段2名称", "desc": "描述"},
+    {"name": "阶段3名称", "desc": "描述"},
+    {"name": "阶段4名称", "desc": "描述"}
   ],
   "tasks": [
-    {"title": "任务标题", "desc": "任务描述", "phase": "阶段名称", "output": "产出物名称", "outputType": "产出类型", "steps": ["步骤1","步骤2","步骤3"], "tools": ["工具1","工具2"], "checklist": ["检查点1","检查点2"]}
+    {
+      "title": "任务标题（体现补齐JD哪项要求）",
+      "desc": "任务描述：说明这个任务针对JD中的哪个要求，做什么，怎么验证达成",
+      "phase": "对应阶段名称",
+      "output": "具体产出物名称（如：岗位调研报告.docx）",
+      "outputType": "产出类型（文档/代码/设计稿/数据报告/演示PPT等）",
+      "jdRequirement": "本任务对应的JD原文要求（摘录关键短语）",
+      "steps": ["具体步骤1：做什么、怎么做", "具体步骤2：用什么工具/方法", "具体步骤3：如何验证完成"],
+      "tools": ["推荐工具1（附用途）", "推荐工具2"],
+      "checklist": ["验收标准1：达到什么程度算合格", "验收标准2：面试时如何展示这个成果"]
+    }
   ],
-  "keywords": "关键词1·关键词2·关键词3·关键词4·关键词5"
+  "keywords": "该岗位面试高频关键词1·关键词2·关键词3·关键词4·关键词5"
 }
 
-要求：
-1. skills 必须6个维度，名称2-4字，必须贴合detectedRole岗位
-2. tasks 生成${State.userInput.sprintDays}个任务，每个任务都要贴合detectedRole岗位的实际工作内容
-3. tasks 的内容必须与JD中的工作职责直接相关，不要生搬硬套其他岗位的模板
-4. tasks 的 output 和 outputType 要具体可展示
-5. phases 分4个阶段，对应冲刺周期
-6. 所有内容用中文`;
+【质量约束】
+1. skills 数量6个，名称2-4字，current值基于用户已有技能与JD的匹配度客观评估，不要给所有人一样的数值
+2. tasks 严格生成${State.userInput.sprintDays}个，按冲刺周期合理分配到4个阶段
+3. 每个task必须有jdRequirement字段，标注对应JD中的哪条要求（无JD时标注对应行业标准要求）
+4. 任务难度要递进：前几天是基础认知和调研，中期是实操练习，后期是项目整合和面试准备
+5. steps要具体可执行（不是"了解X"这种空泛描述，而是"阅读3篇行业报告，总结该岗位TOP3核心能力"）
+6. output必须是具体的文件名或成果名，不能是"文档"这种泛称
+7. 所有内容用中文，不要用英文术语除非是行业标准说法`;
 
   // 自动重试最多 3 次
   let masterResult = null;
@@ -616,7 +625,8 @@ ${jdInstruction}
         skills: data.skills.map(s => ({
           name: s.name,
           current: s.current || 30,
-          target: s.target || 75
+          target: s.target || 75,
+          gap: s.gap || '',
         })),
         phases: data.phases,
         scenes: '求职 / 转岗 / 作品集 / 面试冲刺',
@@ -629,6 +639,7 @@ ${jdInstruction}
         phase: t.phase || data.phases[Math.min(Math.floor(i / (State.userInput.sprintDays / 4)), 3)].name,
         title: t.title,
         desc: t.desc,
+        jdRequirement: t.jdRequirement || '',
         time: State.userInput.timePerDay,
         output: {
           type: t.outputType || '文档输出',
@@ -1004,6 +1015,7 @@ function renderGap() {
           <span>当前 ${s.current}</span>
           <span>目标 ${s.target} · 差距 ${gap}</span>
         </div>
+        ${s.gap ? `<div class="gap-ai-hint">${s.gap}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -1587,6 +1599,12 @@ function openTaskModal(day) {
       <div class="mb-label">任务描述</div>
       <div class="mb-text">${task.desc}</div>
     </div>
+    ${task.jdRequirement ? `
+    <div class="mb-section">
+      <div class="mb-label">对应JD要求</div>
+      <div class="mb-jd-req">${task.jdRequirement}</div>
+    </div>
+    ` : ''}
     ${stepsHtml}
     ${toolsHtml}
     <div class="mb-section">
