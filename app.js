@@ -62,7 +62,7 @@ async function callAI(prompt, systemPrompt, timeoutSec) {
         model: AI_CONFIG.model,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 4000,
+        max_tokens: 8000,
       }),
       signal: controller.signal,
     });
@@ -613,7 +613,27 @@ ${jdInstruction}
       if (clean.startsWith('```')) {
         clean = clean.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
       }
-      const data = JSON.parse(clean);
+      // 容错1：去掉尾部不完整的内容，尝试补全括号
+      let data;
+      try {
+        data = JSON.parse(clean);
+      } catch (e1) {
+        console.warn('First parse failed, trying repair...', e1.message);
+        // 容错2：去掉尾部逗号
+        let repaired = clean.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+        try {
+          data = JSON.parse(repaired);
+        } catch (e2) {
+          // 容错3：尝试截取第一个完整的JSON对象
+          const firstBrace = repaired.indexOf('{');
+          const lastBrace = repaired.lastIndexOf('}');
+          if (firstBrace >= 0 && lastBrace > firstBrace) {
+            data = JSON.parse(repaired.substring(firstBrace, lastBrace + 1));
+          } else {
+            throw e2;
+          }
+        }
+      }
 
       if (data.detectedRole && data.detectedRole.trim() && data.detectedRole !== State.userInput.role) {
         State.userInput.role = data.detectedRole.trim();
